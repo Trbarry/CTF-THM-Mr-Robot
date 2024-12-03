@@ -1,3 +1,5 @@
+![Capture TryHackMe](robot.png)
+
 ![Capture TryHackMe](THMCTF.png)
 ### **Récapitulatif organisé de l’exploitation : Mr. Robot**
 
